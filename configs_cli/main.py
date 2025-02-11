@@ -214,6 +214,15 @@ def install_dependencies(system, args):
                 print("Failed to install colorls. You may need to install it manually with:")
                 print("gem install colorls --user-install")
 
+            # Install pyright globally
+            print("\nInstalling pyright...")
+            try:
+                subprocess.run(["sudo", "npm", "install", "-g", "pyright"], check=True)
+                print("pyright installed successfully")
+            except subprocess.CalledProcessError:
+                print("Failed to install pyright. You may need to install it manually with:")
+                print("sudo npm install -g pyright")
+
             # No services to configure for headless setup
 
         except subprocess.CalledProcessError as e:
