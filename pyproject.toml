@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "configs_cli"
-version = "0.2.0"
-description = "CLI tool for setting up a headless development environment"
+version = "0.3.0"
+description = "CLI tool for setting up a minimal headless development environment with zsh, neovim, and tmux"
 requires-python = ">=3.9"
 authors = [
     {name = "Finley", email = "finley@example.com"}
