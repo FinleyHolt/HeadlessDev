@@ -633,66 +633,63 @@ def setup_filesystem():
 def main():
     print_step("Starting configs-cli setup tool")
     parser = argparse.ArgumentParser(
-        description="Setup Configs and Dependencies CLI Tool"
+        description="Setup minimal headless development environment with zsh, neovim, and tmux"
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    # Subcommand: setup.
+    # Subcommand: setup
     setup_parser = subparsers.add_parser("setup", help="Install dependencies and create symlinks")
-    setup_parser.add_argument("--system", required=True, choices=["ubuntu", "arch", "macos", "windows"],
-                              help="Specify your operating system")
-    setup_parser.add_argument("--de", choices=["i3", "kde"],
-                              default="i3",
-                              help="Choose desktop environment (i3 or KDE Plasma)")
-    # Use CONFIGS_REPO environment variable if set; otherwise, default to ~/.configs.
+    setup_parser.add_argument("--system", required=True, choices=["arch"],
+                              help="Currently only Arch Linux is supported")
+    
+    # Use CONFIGS_REPO environment variable if set; otherwise, default to ~/.configs
     default_repo = os.environ.get("CONFIGS_REPO", os.path.join(os.path.expanduser("~"), ".configs"))
     setup_parser.add_argument("--repo", default=default_repo,
-                              help="Path to your Configs repository (or set CONFIGS_REPO)")
+                              help="Path to your configs repository (or set CONFIGS_REPO)")
     setup_parser.add_argument("--repo-url", default=None,
                               help="Git URL of your repository (if not already cloned)")
     
-    # Subcommand: source.
-    subparsers.add_parser("source", help="Output commands to source your configuration")
+    # Subcommand: check
+    subparsers.add_parser("check", help="Check status of all config symlinks")
     
-    # Subcommand: check-links.
-    subparsers.add_parser("check-links", help="Check status of all config symlinks")
-    
-    # Subcommand: help.
+    # Subcommand: help
     help_parser = subparsers.add_parser("help", help="Show detailed help information")
     
     args = parser.parse_args()
 
     if args.command == "help":
         print("""
-Configs CLI - Configuration Management Tool
+Configs CLI - Headless Development Environment Setup
+
+This tool sets up a minimal development environment with:
+- zsh (with Oh My Zsh)
+- neovim
+- tmux
 
 Commands:
   setup   Install dependencies and create symlinks
-    --system    Required. Choose: ubuntu, arch, macos, windows
+    --system    Required. Currently only 'arch' is supported
     --repo      Path to configs repository (default: ~/.configs)
     --repo-url  Git URL to clone if repo doesn't exist
     
-  source  Show commands to source your configuration
+  check   Check status of all config symlinks
     
   help    Show this help message
 
 Environment Variables:
   CONFIGS_REPO  Set default repository path
 
-Examples:
-  # Setup on Arch Linux (correct usage)
-  configs-cli setup --system arch
-  
-  # Setup with custom repository
-  configs-cli setup --system ubuntu --repo ~/my-configs
-  
-  # Show source commands
-  configs-cli source
+Quick Start:
+  1. Clone your configs repository:
+     git clone https://github.com/yourusername/configs.git ~/.configs
 
-Common Mistakes:
-  ❌ configs-cli --system arch                    # Wrong! Missing 'setup' command
-  ❌ configs-cli setup --system arch              # Wrong! Missing --repo argument
-  ✅ configs-cli setup --system arch --repo ~/my-configs  # Correct!
+  2. Run the setup:
+     configs-cli setup --system arch
+
+  3. Start using your new environment:
+     - Launch zsh
+     - Start tmux
+     - Open neovim
 """)
         return
 
