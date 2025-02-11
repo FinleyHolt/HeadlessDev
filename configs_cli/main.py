@@ -201,17 +201,6 @@ def install_dependencies(system, args):
                         print("cd yay && makepkg -si")
                         return
 
-            # Install AUR packages
-            if shutil.which("yay"):
-                aur_packages = ["spotify", "slack-desktop"]
-                print("\nInstalling AUR packages...")
-                for pkg in aur_packages:
-                    try:
-                        subprocess.run(["yay", "-S", "--needed", "--noconfirm", pkg], check=True)
-                    except subprocess.CalledProcessError:
-                        print(f"Failed to install AUR package: {pkg}")
-            else:
-                print("\nSkipping AUR packages as yay is not available")
             
             # Install colorls gem with proper permissions
             print("\nInstalling colorls gem...")
