@@ -117,15 +117,13 @@ def check_dependency(pkg):
     if shutil.which(pkg):
         return True
     
-    # Additional check for system packages
-    if os.name != 'nt':  # Not Windows
-        try:
-            if subprocess.run(["which", pkg], 
-                            stdout=subprocess.PIPE, 
-                            stderr=subprocess.PIPE).returncode == 0:
-                return True
-        except:
-            pass
+    try:
+        if subprocess.run(["which", pkg], 
+                        stdout=subprocess.PIPE, 
+                        stderr=subprocess.PIPE).returncode == 0:
+            return True
+    except:
+        pass
     return False
 
 def install_jetbrains_font():
@@ -277,16 +275,65 @@ def install_dependencies(system, args):
             print("Please check the error messages above and try to resolve any conflicts.")
             
     elif system in ["ubuntu", "debian"]:
-        print("Ubuntu/Debian support not implemented yet")
-        sys.exit(1)
-    elif system in ["macos", "mac"]:
-        print("MacOS support not implemented yet")
-        sys.exit(1)
-    elif system in ["windows"]:
-        print("Windows support not implemented yet")
-        sys.exit(1)
+        print_step("Installing dependencies on Ubuntu/Debian")
+        
+        # Update package lists
+        subprocess.run(["sudo", "apt-get", "update"], check=True)
+        
+        # Install essential packages first
+        print("Installing essential packages...")
+        essential_packages = ["zsh", "tmux"]
+        subprocess.run(["sudo", "apt-get", "install", "-y"] + essential_packages, check=True)
+        
+        # Base packages for headless environment
+        base_packages = [
+            "neovim", "curl", "git", "wget",
+            "ruby", "ruby-dev", "gcc",
+            "fonts-jetbrains-mono-nerd",
+            "python3-pip", "nodejs", "npm"
+        ]
+
+        # Install core packages
+        print("Installing core packages...")
+        subprocess.run(["sudo", "apt-get", "install", "-y"] + base_packages, check=True)
+        
+        # Install zsh plugins
+        print("\nInstalling zsh plugins...")
+        zsh_plugins = ["zsh-syntax-highlighting", "zsh-autosuggestions"]
+        subprocess.run(["sudo", "apt-get", "install", "-y"] + zsh_plugins, check=True)
+
+        # Install zsh-autocomplete
+        autocomplete_dir = os.path.expanduser("~/.zsh/zsh-autocomplete")
+        if not os.path.exists(autocomplete_dir):
+            print("\nInstalling zsh-autocomplete...")
+            subprocess.run(["git", "clone", "--depth", "1",
+                          "https://github.com/marlonrichert/zsh-autocomplete.git",
+                          autocomplete_dir], check=True)
+
+        # Set up npm global directory
+        npm_global_dir = os.path.expanduser("~/.npm-global")
+        if not os.path.exists(npm_global_dir):
+            print("\nConfiguring npm global directory...")
+            os.makedirs(npm_global_dir, exist_ok=True)
+            subprocess.run(["npm", "config", "set", "prefix", npm_global_dir], check=True)
+
+        # Install colorls gem
+        print("\nInstalling colorls gem...")
+        try:
+            subprocess.run(["gem", "install", "colorls", "--user-install"], check=True)
+            print("colorls installed successfully")
+        except subprocess.CalledProcessError:
+            print("Failed to install colorls. You may need to install it manually.")
+
+        # Install pyright
+        print("\nInstalling pyright...")
+        try:
+            subprocess.run(["npm", "install", "-g", "pyright"], check=True)
+            print("pyright installed successfully")
+        except subprocess.CalledProcessError:
+            print("Failed to install pyright. Please try manually: npm install -g pyright")
     else:
-        print("Unknown system type. Please specify one of: ubuntu, arch, macos, or windows")
+        print("Unknown system type. Please specify either arch or ubuntu")
         sys.exit(1)
 
 def ensure_line_in_file(file_path, line):
@@ -537,8 +584,8 @@ def main():
 
     # Subcommand: setup
     setup_parser = subparsers.add_parser("setup", help="Install dependencies and create symlinks")
-    setup_parser.add_argument("--system", required=True, choices=["arch"],
-                              help="Currently only Arch Linux is supported")
+    setup_parser.add_argument("--system", required=True, choices=["arch", "ubuntu"],
+                              help="Specify the system type (arch or ubuntu)")
     
     # Use CONFIGS_REPO environment variable if set; otherwise, default to ~/.configs
     default_repo = os.environ.get("CONFIGS_REPO", os.path.join(os.path.expanduser("~"), ".configs"))
@@ -566,7 +613,7 @@ This tool sets up a minimal development environment with:
 
 Commands:
   setup   Install dependencies and create symlinks
-    --system    Required. Currently only 'arch' is supported
+    --system    Required. Specify 'arch' or 'ubuntu'
     --repo      Path to configs repository (default: ~/.configs)
     --repo-url  Git URL to clone if repo doesn't exist
     
@@ -582,7 +629,7 @@ Quick Start:
      git clone https://github.com/yourusername/configs.git ~/.configs
 
   2. Run the setup:
-     configs-cli setup --system arch
+     configs-cli setup --system [arch|ubuntu]
 
   3. Start using your new environment:
      - Launch zsh
