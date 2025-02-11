@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 
 setup(
     name="configs_cli",
-    version="0.2.0",
-    description="CLI tool for setting up a headless development environment",
+    version="0.3.0",
+    description="CLI tool for setting up a minimal headless development environment with zsh, neovim, and tmux",
     author="Your Name",
     packages=find_packages(),
     entry_points={
@@ -18,7 +18,8 @@ setup(
         'wheel',
     ],
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
+        'Environment :: Console',
         'Intended Audience :: Developers',
         'Topic :: System :: Installation/Setup',
         'License :: OSI Approved :: MIT License',
