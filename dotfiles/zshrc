@@ -1,0 +1,141 @@
+# -----------------------------------------------------------------------------
+# Basic PATH Setup
+# -----------------------------------------------------------------------------
+# Set path to dotfiles repository
+export DOTFILES_DIR="$(dirname $(readlink -f ${HOME}/.zshrc))"
+export PATH="$HOME/.local/bin:$PATH"
+
+# Set kitty as default terminal
+export TERMINAL="kitty"
+
+# -----------------------------------------------------------------------------
+# (Tmux Auto-Start block removed)
+# -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# Oh My Zsh Settings
+# -----------------------------------------------------------------------------
+export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME="Catppuccin"
+plugins=(git)
+
+# -----------------------------------------------------------------------------
+# ZSH Autosuggestions & Autocomplete Configuration
+# -----------------------------------------------------------------------------
+# Load zsh-autosuggestions
+if [ -f "/usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
+    source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+else
+    echo "Warning: zsh-autosuggestions not found!"
+fi
+
+# Load zsh-autocomplete
+if [ -f "/usr/share/zsh/plugins/zsh-autocomplete/zsh-autocomplete.plugin.zsh" ]; then
+    source /usr/share/zsh/plugins/zsh-autocomplete/zsh-autocomplete.plugin.zsh
+else
+    echo "Warning: zsh-autocomplete not found!"
+fi
+
+# Autocomplete and autosuggestion settings
+zstyle ':autocomplete:*' min-input 1  # Characters before autocompletion starts
+zstyle ':autocomplete:*' insert-unambiguous yes  # Insert common substring on first tab
+zstyle ':autocomplete:*' widget-style menu-select  # Use menu selection interface
+
+# Autosuggestions configuration
+ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
+
+# -----------------------------------------------------------------------------
+# Custom Plugin and Theme Sources
+# -----------------------------------------------------------------------------
+# Source Catppuccin syntax highlighting theme (adjust the path if necessary)
+if [ -f "$HOME/.zsh/catppuccin_mocha-zsh-syntax-highlighting.zsh" ]; then
+    source "$HOME/.zsh/catppuccin_mocha-zsh-syntax-highlighting.zsh"
+else
+    echo "Warning: Catppuccin syntax highlighting theme not found at $HOME/.zsh/catppuccin_mocha-zsh-syntax-highlighting.zsh"
+fi
+
+# Source zsh-syntax-highlighting if it exists
+if [ -f "/usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]; then
+    source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+else
+    echo "Warning: zsh-syntax-highlighting not found!"
+fi
+
+# -----------------------------------------------------------------------------
+# Aliases for Colorized ls via colorls
+# -----------------------------------------------------------------------------
+alias ls='colorls'
+alias l='colorls -l'
+alias la='colorls -la'
+alias lt='colorls --tree'
+
+# -----------------------------------------------------------------------------
+# System Helper Aliases
+# -----------------------------------------------------------------------------
+alias help-arch='cat ${DOTFILES_DIR}/../docs/arch_cheatsheet.txt'
+alias help-ubuntu='cat ${DOTFILES_DIR}/../docs/ubuntu-cheatsheet.txt'
+alias help-windows='cat ${DOTFILES_DIR}/../docs/windows-cheatsheet.txt'
+
+# -----------------------------------------------------------------------------
+# Ruby Gems Bin Directory
+# -----------------------------------------------------------------------------
+if [ -d "$HOME/.local/share/gem/ruby/3.3.0/bin" ]; then
+    export PATH="$HOME/.local/share/gem/ruby/3.3.0/bin:$PATH"
+elif [ -d "/usr/lib/ruby/gems/3.3.0/bin" ]; then
+    export PATH="/usr/lib/ruby/gems/3.3.0/bin:$PATH"
+fi
+
+# -----------------------------------------------------------------------------
+# Load Secrets (API Keys, etc.)
+# -----------------------------------------------------------------------------
+if [ -f "$HOME/.config/secrets.env" ]; then
+    # This will export each non-commented line as an environment variable.
+    export $(grep -v '^#' "$HOME/.config/secrets.env" | xargs)
+fi
+
+# -----------------------------------------------------------------------------
+# Conda Initialization (Anaconda)
+# -----------------------------------------------------------------------------
+__conda_setup="$("$HOME/anaconda3/bin/conda" "shell.zsh" "hook" 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "$HOME/anaconda3/etc/profile.d/conda.sh" ]; then
+        . "$HOME/anaconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="$HOME/anaconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+
+# Activate the 'Finley' Conda environment
+conda activate Finley
+
+# -----------------------------------------------------------------------------
+# Kitty Shell Integration
+# -----------------------------------------------------------------------------
+# Only run this if we’re in a kitty session (TERM set to xterm-kitty)
+if [[ "$TERM" == "xterm-kitty" ]]; then
+    echo "Loading kitty integration from: $KITTY_INSTALLATION_DIR" >&2
+    export KITTY_SHELL_INTEGRATION="enabled"
+    autoload -Uz -- "$KITTY_INSTALLATION_DIR"/shell-integration/zsh/kitty-integration
+    kitty-integration
+    unfunction kitty-integration
+fi
+
+# VM Alias
+alias archvm='qemu-system-x86_64 \
+  -enable-kvm \
+  -m 2048 \
+  -cpu host \
+  -drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd \
+  -drive if=pflash,format=raw,file=/home/Finley/OVMF_VARS.fd \
+  -cdrom archlinux.iso \
+  -boot d \
+  -drive file=arch_disk.qcow2,format=qcow2 \
+  -net nic \
+  -net user'
+
+alias reset-archvm='qemu-img snapshot -a "fresh_install" arch_disk.qcow2'
