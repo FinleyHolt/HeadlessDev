@@ -159,7 +159,8 @@ def install_dependencies(system, args):
         base_packages = [
             "neovim", "curl", "git", "wget",
             "ruby", "ruby-rake", "gcc",
-            "ttf-jetbrains-mono-nerd"
+            "ttf-jetbrains-mono-nerd",
+            "python-pip", "nodejs", "npm"
         ]
 
         # Install zsh plugins separately to ensure they're found
