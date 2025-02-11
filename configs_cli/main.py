@@ -221,32 +221,54 @@ def install_dependencies(system, args):
                 subprocess.run(["sudo", "pacman", "-S", "--needed", "--noconfirm", "nodejs", "npm"], check=True)
                 print("nodejs and npm installed successfully")
             
-            # Check if pyright is installed
+            # Set up npm global directory
+            npm_global_dir = os.path.expanduser("~/.npm-global")
+            if not os.path.exists(npm_global_dir):
+                print("\nConfiguring npm global directory...")
+                os.makedirs(npm_global_dir, exist_ok=True)
+                subprocess.run(["npm", "config", "set", "prefix", npm_global_dir], check=True)
+                
+                # Add npm-global/bin to PATH in zshrc if not already there
+                zshrc_path = os.path.expanduser("~/.zshrc")
+                if os.path.exists(zshrc_path):
+                    npm_path_line = f'export PATH="{npm_global_dir}/bin:$PATH"'
+                    with open(zshrc_path, "r") as f:
+                        if npm_path_line not in f.read():
+                            with open(zshrc_path, "a") as f:
+                                f.write(f"\n# NPM global packages\n{npm_path_line}\n")
+
+            # Ensure pyright is installed and executable
+            print("\nChecking pyright installation...")
+            pyright_bin = os.path.join(npm_global_dir, "bin", "pyright")
             pyright_check = subprocess.run(["npm", "list", "-g", "pyright"], 
                                          capture_output=True, text=True)
-            if "pyright" not in pyright_check.stdout:
-                print("\nInstalling pyright globally...")
+            
+            if not os.path.exists(pyright_bin) or "pyright" not in pyright_check.stdout:
+                print("Installing pyright globally...")
                 try:
-                    # Create global npm directory with proper permissions
-                    npm_global_dir = os.path.expanduser("~/.npm-global")
-                    if not os.path.exists(npm_global_dir):
-                        os.makedirs(npm_global_dir, exist_ok=True)
-                        subprocess.run(["npm", "config", "set", "prefix", npm_global_dir], check=True)
-                        # Add npm-global/bin to PATH in zshrc
-                        zshrc_path = os.path.expanduser("~/.zshrc")
-                        if os.path.exists(zshrc_path):
-                            npm_path_line = f'\nexport PATH="{npm_global_dir}/bin:$PATH"\n'
-                            with open(zshrc_path, "a") as f:
-                                f.write(npm_path_line)
-                    
-                    # Install pyright without sudo
                     subprocess.run(["npm", "install", "-g", "pyright"], check=True)
+                    # Ensure the binary is executable
+                    if os.path.exists(pyright_bin):
+                        os.chmod(pyright_bin, 0o755)
                     print("pyright installed successfully")
+                    
+                    # Verify pyright is working
+                    subprocess.run([pyright_bin, "--version"], check=True)
+                    print("pyright is working correctly")
                 except subprocess.CalledProcessError as e:
-                    print(f"Error installing pyright: {e}")
-                    print("You may need to install it manually with: npm install -g pyright")
+                    print(f"Error installing/running pyright: {e}")
+                    print("Please try installing manually with: npm install -g pyright")
             else:
                 print("pyright is already installed")
+                try:
+                    # Ensure existing installation is executable
+                    if os.path.exists(pyright_bin):
+                        os.chmod(pyright_bin, 0o755)
+                    subprocess.run([pyright_bin, "--version"], check=True)
+                    print("pyright is working correctly")
+                except subprocess.CalledProcessError:
+                    print("pyright is installed but not working correctly")
+                    print("Try reinstalling with: npm install -g pyright")
 
             # No services to configure for headless setup
 
