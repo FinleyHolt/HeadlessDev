@@ -155,13 +155,10 @@ def install_dependencies(system, args):
         essential_packages = ["zsh", "tmux"]
         subprocess.run(["sudo", "pacman", "-S", "--needed", "--noconfirm"] + essential_packages, check=True)
         
-        # Base packages for all environments
+        # Base packages for headless environment
         base_packages = [
-            "neovim", "curl", "git", "wget", "kitty",
-            "pipewire", "pipewire-pulse", "wireplumber", "pavucontrol", "alsa-utils",
-            "networkmanager", "network-manager-applet",
-            "bluez", "bluez-utils", "blueman",
-            "discord", "ruby", "ruby-rake", "gcc",
+            "neovim", "curl", "git", "wget",
+            "ruby", "ruby-rake", "gcc",
             "ttf-jetbrains-mono-nerd"
         ]
 
@@ -178,23 +175,8 @@ def install_dependencies(system, args):
                           "https://github.com/marlonrichert/zsh-autocomplete.git",
                           autocomplete_dir], check=True)
 
-        # Environment-specific packages
-        de_packages = {
-            "i3": [
-                "i3-wm", "i3status", "i3blocks", "i3lock",
-                "picom", "feh", "rofi", "dunst",
-                "xorg-server", "xorg-xinit", "xorg-xrandr", "xorg-xsetroot",
-                "lightdm", "lightdm-gtk-greeter"
-            ],
-            "kde": [
-                "plasma", "plasma-wayland-session", "plasma-desktop",
-                "sddm", "sddm-kcm", "plasma-sddm", "xorg-server", "xorg-xinit", "kde-applications-meta",
-                "plasma-pa", "plasma-nm", "dolphin", "konsole"
-            ]
-        }
-
-        # Combine base packages with DE-specific packages
-        core_packages = base_packages + de_packages[args.de]
+        # Install core packages
+        core_packages = base_packages
         
         try:
             # Update package database first
@@ -242,81 +224,7 @@ def install_dependencies(system, args):
                 print("Failed to install colorls. You may need to install it manually with:")
                 print("gem install colorls --user-install")
 
-            # Reset and start necessary services
-            print("\nResetting and starting necessary services...")
-            # Common services
-            services = [
-                "NetworkManager",
-                "bluetooth",
-                "pipewire",
-                "pipewire-pulse"
-            ]
-
-            # Configure and enable display manager based on DE choice
-            if args.de == "i3":
-                # Install and configure LightDM
-                subprocess.run(["sudo", "systemctl", "disable", "sddm"], check=True, stderr=subprocess.DEVNULL)
-                subprocess.run(["sudo", "systemctl", "enable", "lightdm"], check=True)
-                print("\nLightDM enabled. After reboot, select i3 as your session.")
-            elif args.de == "kde":
-                # Install and configure SDDM
-                try:
-                    subprocess.run(["sudo", "systemctl", "disable", "lightdm"], check=True, stderr=subprocess.DEVNULL)
-                except subprocess.CalledProcessError:
-                    pass  # It's ok if lightdm wasn't installed
-
-                # Install SDDM and Plasma first
-                print("\nInstalling SDDM and Plasma components...")
-                sddm_packages = ["sddm", "plasma-sddm", "plasma-desktop", "plasma-wayland-session"]
-                subprocess.run(["sudo", "pacman", "-S", "--needed", "--noconfirm"] + sddm_packages, check=True)
-                
-                # Install and configure SDDM first
-                print("Installing and configuring SDDM...")
-                subprocess.run(["sudo", "pacman", "-S", "--needed", "--noconfirm", "sddm", "sddm-kcm"], check=True)
-                subprocess.run(["sudo", "systemctl", "-f", "enable", "sddm"], check=True)
-                
-                # Create default SDDM configuration
-                subprocess.run(["sudo", "mkdir", "-p", "/etc/sddm.conf.d"], check=True)
-                with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
-                    f.write("""[General]
-Session=plasma
-[Theme]
-Current=breeze
-
-[Users]
-MaximumUid=60000
-MinimumUid=1000
-""")
-                subprocess.run(["sudo", "mv", f.name, "/etc/sddm.conf.d/kde_settings.conf"], check=True)
-                subprocess.run(["sudo", "chown", "root:root", "/etc/sddm.conf.d/kde_settings.conf"], check=True)
-                subprocess.run(["sudo", "chmod", "644", "/etc/sddm.conf.d/kde_settings.conf"], check=True)
-                
-                print("\nSDDM configured and enabled. System will boot into KDE Plasma after restart.")
-            
-            for service in services:
-                try:
-                    print(f"Enabling and starting {service}...")
-                    subprocess.run(["sudo", "systemctl", "enable", service], check=True)
-                    subprocess.run(["sudo", "systemctl", "restart", service], check=True)
-                except subprocess.CalledProcessError as e:
-                    print(f"Warning: Failed to configure {service}: {e}")
-
-            # Only try to reload i3 if it's running
-            try:
-                # Check if i3 is running by looking for its socket
-                i3_socket = subprocess.run(
-                    ["i3", "--get-socketpath"],
-                    capture_output=True,
-                    text=True
-                )
-                if i3_socket.returncode == 0:
-                    subprocess.run(["i3-msg", "reload"], check=True)
-                    subprocess.run(["i3-msg", "restart"], check=True)
-                    print("i3 configuration reloaded")
-                else:
-                    print("i3 is not currently running - skipping reload")
-            except subprocess.CalledProcessError as e:
-                print(f"Note: Could not reload i3 (this is normal if i3 isn't running)")
+            # No services to configure for headless setup
 
         except subprocess.CalledProcessError as e:
             print(f"Error during installation: {e}")
@@ -458,60 +366,7 @@ def create_symlinks(repo_dir, args):
     os.symlink(nvim_src, nvim_dest)
     print(f"Created symlink: {nvim_dest} -> {nvim_src}")
 
-    # Create DE-specific symlinks and configurations
-    if args.de == "i3":
-        # Create symlink for i3 config
-        i3_src = os.path.abspath(os.path.join(config_dir, "i3"))
-        i3_dest = os.path.join(home, ".config", "i3")
-        if os.path.exists(i3_dest) or os.path.islink(i3_dest):
-            if os.path.islink(i3_dest):
-                os.remove(i3_dest)
-            else:
-                shutil.rmtree(i3_dest)
-        os.symlink(i3_src, i3_dest)
-        print(f"Created symlink: {i3_dest} -> {i3_src}")
-        
-        # Make i3 setup script executable
-        i3_setup_script = os.path.join(i3_dest, "i3-setup.sh")
-        if os.path.exists(i3_setup_script):
-            os.chmod(i3_setup_script, 0o755)
-            print("i3 setup script is now executable")
-            
-            # Create xinitrc for i3
-            xinitrc_path = os.path.join(home, ".xinitrc")
-            with open(xinitrc_path, "w") as f:
-                f.write("#!/bin/sh\n\n")
-                f.write("# Execute i3 setup script\n")
-                f.write(f"{i3_setup_script}\n\n")
-                f.write("# Start i3\n")
-                f.write("exec i3\n")
-            os.chmod(xinitrc_path, 0o755)
-            print("Created .xinitrc with i3 configuration")
-    elif args.de == "kde":
-        # KDE configs are handled by the system, no manual symlinks needed
-        print("Using KDE Plasma - configurations will be managed by the system")
-
-    # Create symlink for picom config (placed in ~/.config/picom).
-    picom_src = os.path.abspath(os.path.join(config_dir, "picom"))
-    picom_dest = os.path.join(home, ".config", "picom")
-    if os.path.exists(picom_dest) or os.path.islink(picom_dest):
-        if os.path.islink(picom_dest):
-            os.remove(picom_dest)
-        else:
-            shutil.rmtree(picom_dest)
-    os.symlink(picom_src, picom_dest)
-    print(f"Created symlink: {picom_dest} -> {picom_src}")
-
-    # Create symlink for kitty config (placed in ~/.config/kitty).
-    kitty_src = os.path.abspath(os.path.join(config_dir, "kitty"))
-    kitty_dest = os.path.join(home, ".config", "kitty")
-    if os.path.exists(kitty_dest) or os.path.islink(kitty_dest):
-        if os.path.islink(kitty_dest):
-            os.remove(kitty_dest)
-        else:
-            shutil.rmtree(kitty_dest)
-    os.symlink(kitty_src, kitty_dest)
-    print(f"Created symlink: {kitty_dest} -> {kitty_src}")
+    # No DE-specific symlinks needed for headless setup
 
 def set_default_shell(shell):
     if os.name != 'nt':
@@ -547,10 +402,7 @@ def check_symlinks():
     }
     
     config_links = {
-        os.path.join(config_dir, "nvim"): "nvim config",
-        os.path.join(config_dir, "i3"): "i3 config",
-        os.path.join(config_dir, "picom"): "picom config",
-        os.path.join(config_dir, "kitty"): "kitty config"
+        os.path.join(config_dir, "nvim"): "nvim config"
     }
     
     print_step("Checking symlinks status")
