@@ -214,14 +214,39 @@ def install_dependencies(system, args):
                 print("Failed to install colorls. You may need to install it manually with:")
                 print("gem install colorls --user-install")
 
-            # Install pyright globally
-            print("\nInstalling pyright...")
-            try:
-                subprocess.run(["sudo", "npm", "install", "-g", "pyright"], check=True)
-                print("pyright installed successfully")
-            except subprocess.CalledProcessError:
-                print("Failed to install pyright. You may need to install it manually with:")
-                print("sudo npm install -g pyright")
+            # Check and install npm/node if needed
+            print("\nChecking npm/node installation...")
+            if not shutil.which("npm"):
+                print("Installing nodejs and npm...")
+                subprocess.run(["sudo", "pacman", "-S", "--needed", "--noconfirm", "nodejs", "npm"], check=True)
+                print("nodejs and npm installed successfully")
+            
+            # Check if pyright is installed
+            pyright_check = subprocess.run(["npm", "list", "-g", "pyright"], 
+                                         capture_output=True, text=True)
+            if "pyright" not in pyright_check.stdout:
+                print("\nInstalling pyright globally...")
+                try:
+                    # Create global npm directory with proper permissions
+                    npm_global_dir = os.path.expanduser("~/.npm-global")
+                    if not os.path.exists(npm_global_dir):
+                        os.makedirs(npm_global_dir, exist_ok=True)
+                        subprocess.run(["npm", "config", "set", "prefix", npm_global_dir], check=True)
+                        # Add npm-global/bin to PATH in zshrc
+                        zshrc_path = os.path.expanduser("~/.zshrc")
+                        if os.path.exists(zshrc_path):
+                            npm_path_line = f'\nexport PATH="{npm_global_dir}/bin:$PATH"\n'
+                            with open(zshrc_path, "a") as f:
+                                f.write(npm_path_line)
+                    
+                    # Install pyright without sudo
+                    subprocess.run(["npm", "install", "-g", "pyright"], check=True)
+                    print("pyright installed successfully")
+                except subprocess.CalledProcessError as e:
+                    print(f"Error installing pyright: {e}")
+                    print("You may need to install it manually with: npm install -g pyright")
+            else:
+                print("pyright is already installed")
 
             # No services to configure for headless setup
 
